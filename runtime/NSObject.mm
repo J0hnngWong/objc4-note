@@ -298,6 +298,9 @@ template <HaveOld haveOld, HaveNew haveNew,
 static id 
 storeWeak(id *location, objc_object *newObj)
 {
+    // haveOld = true
+    // haveNew = true
+    // crashIfDeallocating = true
     ASSERT(haveOld  ||  haveNew);
     if (!haveNew) ASSERT(newObj == nil);
 
@@ -309,6 +312,11 @@ storeWeak(id *location, objc_object *newObj)
     // Acquire locks for old and new values.
     // Order by lock address to prevent lock ordering problems. 
     // Retry if the old value changes underneath us.
+    
+    // SideTables是一个static变量（全局变量）
+    // oldObj是weak属性存储的指针指向的对象
+    // 以oldObj作为key来取出oldTable（这个实例的弱引用表）
+    // newObj同理
  retry:
     if (haveOld) {
         oldObj = *location;
@@ -324,6 +332,8 @@ storeWeak(id *location, objc_object *newObj)
 
     SideTable::lockTwo<haveOld, haveNew>(oldTable, newTable);
 
+    // 如果指向的弱引用表对不上了（可能被其他线程更改）
+    // 则返回retry段，重新进行判断
     if (haveOld  &&  *location != oldObj) {
         SideTable::unlockTwo<haveOld, haveNew>(oldTable, newTable);
         goto retry;
@@ -334,6 +344,8 @@ storeWeak(id *location, objc_object *newObj)
     // weakly-referenced object has an un-+initialized isa.
     if (haveNew  &&  newObj) {
         Class cls = newObj->getIsa();
+        // 如果实例还没有被初始化
+        // 则先初始化之后再返回retry段
         if (cls != previouslyInitializedClass  &&  
             !((objc_class *)cls)->isInitialized()) 
         {

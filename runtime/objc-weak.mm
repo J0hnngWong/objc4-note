@@ -347,13 +347,17 @@ void
 weak_unregister_no_lock(weak_table_t *weak_table, id referent_id, 
                         id *referrer_id)
 {
+    // referent 老的引用表
+    // referrer 指向老的引用表的指针
     objc_object *referent = (objc_object *)referent_id;
     objc_object **referrer = (objc_object **)referrer_id;
 
     weak_entry_t *entry;
 
+    // 如果已经没有老的引用表了，那就不需要清除，直接返回
     if (!referent) return;
 
+    // 如果有
     if ((entry = weak_entry_for_referent(weak_table, referent))) {
         remove_referrer(entry, referrer);
         bool empty = true;
