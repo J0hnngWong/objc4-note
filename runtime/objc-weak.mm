@@ -347,18 +347,20 @@ void
 weak_unregister_no_lock(weak_table_t *weak_table, id referent_id, 
                         id *referrer_id)
 {
-    // referent 老的引用表
-    // referrer 指向老的引用表的指针
+    // weak_table 全局弱引用表
+    // referent object
+    // referrer 弱引用
     objc_object *referent = (objc_object *)referent_id;
     objc_object **referrer = (objc_object **)referrer_id;
 
     weak_entry_t *entry;
 
-    // 如果已经没有老的引用表了，那就不需要清除，直接返回
+    // 如果已经没有老的引用表的key，那就不需要清除，直接返回
     if (!referent) return;
 
-    // 如果有
+    // 如果能从弱引用表中取出对应的结构体
     if ((entry = weak_entry_for_referent(weak_table, referent))) {
+        // 删除结构体中对应的弱引用
         remove_referrer(entry, referrer);
         bool empty = true;
         if (entry->out_of_line()  &&  entry->num_refs != 0) {
@@ -394,6 +396,8 @@ id
 weak_register_no_lock(weak_table_t *weak_table, id referent_id, 
                       id *referrer_id, WeakRegisterDeallocatingOptions deallocatingOptions)
 {
+    // referent 被弱引用指向的对象
+    // referrer 弱指针地址
     objc_object *referent = (objc_object *)referent_id;
     objc_object **referrer = (objc_object **)referrer_id;
 
